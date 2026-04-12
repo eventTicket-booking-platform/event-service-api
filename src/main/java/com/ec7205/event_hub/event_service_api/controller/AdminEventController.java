@@ -3,7 +3,6 @@ package com.ec7205.event_hub.event_service_api.controller;
 import com.ec7205.event_hub.event_service_api.dto.request.CreateEventRequest;
 import com.ec7205.event_hub.event_service_api.dto.request.UpdateEventRequest;
 import com.ec7205.event_hub.event_service_api.dto.request.UpdateEventStatusRequest;
-import com.ec7205.event_hub.event_service_api.dto.response.AdminEventSummaryResponse;
 import com.ec7205.event_hub.event_service_api.dto.response.ApiMessageResponse;
 import com.ec7205.event_hub.event_service_api.dto.response.paginate.AdminEventPaginateResponseDto;
 import com.ec7205.event_hub.event_service_api.service.EventService;
