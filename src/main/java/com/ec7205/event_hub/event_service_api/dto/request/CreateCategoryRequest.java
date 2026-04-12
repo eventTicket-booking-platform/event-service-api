@@ -1,0 +1,24 @@
+package com.ec7205.event_hub.event_service_api.dto.request;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class CreateCategoryRequest {
+
+    @NotBlank(message = "Category name is required")
+    @Size(max = 100, message = "Category name must not exceed 100 characters")
+    private String name;
+
+    @Size(max = 255, message = "Category description must not exceed 255 characters")
+    private String description;
+}
