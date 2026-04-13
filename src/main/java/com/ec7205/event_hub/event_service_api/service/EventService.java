@@ -11,12 +11,13 @@ import com.ec7205.event_hub.event_service_api.dto.response.paginate.AdminEventPa
 import com.ec7205.event_hub.event_service_api.dto.response.paginate.EventPaginateResponseDto;
 import com.ec7205.event_hub.event_service_api.utils.enums.EventStatus;
 import org.springframework.data.domain.Pageable;
+import org.springframework.web.multipart.MultipartFile;
 
 public interface EventService {
 
-    ApiMessageResponse createEvent(CreateEventRequest request);
+    ApiMessageResponse createEvent(CreateEventRequest request, MultipartFile bannerimg);
 
-    ApiMessageResponse updateEvent(Long eventId, UpdateEventRequest request);
+    ApiMessageResponse updateEvent(Long eventId, UpdateEventRequest request, MultipartFile bannerimg);
 
     ApiMessageResponse changeEventStatus(Long eventId, UpdateEventStatusRequest request);
 

@@ -11,6 +11,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,8 +21,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/event-service/api/v1/events")
@@ -30,17 +33,21 @@ public class AdminEventController {
 
     private final EventService eventService;
 
-    @PostMapping
-    public ResponseEntity<ApiMessageResponse> createEvent(@Valid @RequestBody CreateEventRequest request) {
-        return ResponseEntity.ok(eventService.createEvent(request));
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiMessageResponse> createEvent(
+            @Valid @RequestPart("request") CreateEventRequest request,
+            @RequestPart(value = "bannerimg", required = false) MultipartFile bannerimg
+    ) {
+        return ResponseEntity.ok(eventService.createEvent(request, bannerimg));
     }
 
-    @PutMapping("/{eventId}")
+    @PutMapping(value = "/{eventId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiMessageResponse> updateEvent(
             @PathVariable Long eventId,
-            @Valid @RequestBody UpdateEventRequest request
+            @Valid @RequestPart("request") UpdateEventRequest request,
+            @RequestPart(value = "bannerimg", required = false) MultipartFile bannerimg
     ) {
-        return ResponseEntity.ok(eventService.updateEvent(eventId, request));
+        return ResponseEntity.ok(eventService.updateEvent(eventId, request, bannerimg));
     }
 
     @PatchMapping("/{eventId}/status")

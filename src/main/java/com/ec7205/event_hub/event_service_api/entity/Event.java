@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "events")
+@Table(name = "event")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -19,7 +19,7 @@ public class Event {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Long event_id;
 
     @Column(nullable = false, length = 150)
     private String title;
@@ -34,9 +34,12 @@ public class Event {
     @ManyToOne(fetch = FetchType.LAZY, optional = false, cascade = CascadeType.ALL)
     @JoinColumn(name = "venue_id", nullable = false)
     private Venue venue;
-
+    
     @Column(name = "banner_url", length = 500)
     private String bannerUrl;
+
+    @OneToOne(mappedBy = "event", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    private EventBanner eventBanner;
 
     @Column(name = "start_datetime", nullable = false)
     private LocalDateTime startDateTime;

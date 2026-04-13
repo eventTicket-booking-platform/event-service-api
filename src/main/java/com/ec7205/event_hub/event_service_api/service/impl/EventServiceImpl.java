@@ -11,6 +11,7 @@ import com.ec7205.event_hub.event_service_api.dto.response.paginate.AdminEventPa
 import com.ec7205.event_hub.event_service_api.dto.response.paginate.EventPaginateResponseDto;
 import com.ec7205.event_hub.event_service_api.entity.Category;
 import com.ec7205.event_hub.event_service_api.entity.Event;
+import com.ec7205.event_hub.event_service_api.entity.EventBanner;
 import com.ec7205.event_hub.event_service_api.entity.TicketType;
 import com.ec7205.event_hub.event_service_api.exception.BadRequestException;
 import com.ec7205.event_hub.event_service_api.exception.ConflictException;
@@ -18,22 +19,33 @@ import com.ec7205.event_hub.event_service_api.exception.InvalidStatusTransitionE
 import com.ec7205.event_hub.event_service_api.exception.ResourceNotFoundException;
 import com.ec7205.event_hub.event_service_api.mapper.EventMapper;
 import com.ec7205.event_hub.event_service_api.repository.CategoryRepository;
+import com.ec7205.event_hub.event_service_api.repository.EventBannerRepository;
 import com.ec7205.event_hub.event_service_api.repository.EventRepository;
 import com.ec7205.event_hub.event_service_api.service.EventService;
+import com.ec7205.event_hub.event_service_api.service.FileService;
+import com.ec7205.event_hub.event_service_api.utils.CommonFileSavedBinaryDataDto;
+import com.ec7205.event_hub.event_service_api.utils.FileDataExtractor;
 import com.ec7205.event_hub.event_service_api.utils.enums.EventStatus;
 import jakarta.persistence.criteria.JoinType;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.InputStreamReader;
+import java.io.IOException;
+import java.sql.SQLException;
 import java.time.LocalDateTime;
+import java.util.Date;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -43,11 +55,19 @@ public class EventServiceImpl implements EventService {
     private static final Set<EventStatus> MANAGEABLE_EVENT_STATUSES = EnumSet.of(EventStatus.DRAFT, EventStatus.PUBLISHED);
 
     private final EventRepository eventRepository;
+    private final EventBannerRepository eventBannerRepository;
     private final CategoryRepository categoryRepository;
     private final EventMapper eventMapper;
+    private final FileService fileService;
+    private final FileDataExtractor fileDataExtractor;
+
+    @Value("${bucketName}")
+    private String bucketName;
+
+    private static final String BANNER_DIRECTORY = "banner/";
 
     @Override
-    public ApiMessageResponse createEvent(CreateEventRequest request) {
+    public ApiMessageResponse createEvent(CreateEventRequest request, MultipartFile bannerimg) {
         validateEventSchedule(request.getStartDateTime(), request.getEndDateTime());
         validateTicketTypes(request.getTicketTypes().size());
 
@@ -69,14 +89,26 @@ public class EventServiceImpl implements EventService {
         event.getTicketTypes().addAll(ticketTypes);
 
         Event savedEvent = eventRepository.save(event);
+
+        if (hasBannerFile(bannerimg)) {
+            CommonFileSavedBinaryDataDto resource = uploadBanner(bannerimg);
+            try {
+                savedEvent.setBannerUrl(fileDataExtractor.byteArrayToString(fileDataExtractor.blobToByteArray(resource.getResourceUrl())));
+                saveBannerMetadata(savedEvent, resource);
+            } catch (SQLException | IOException ex) {
+                cleanupCreatedResource(resource);
+                throw new IllegalStateException("Failed to save event banner metadata", ex);
+            }
+        }
+
         return ApiMessageResponse.builder()
                 .message("Event created successfully")
-                .resourceId(savedEvent.getId())
+                .resourceId(savedEvent.getEvent_id())
                 .build();
     }
 
     @Override
-    public ApiMessageResponse updateEvent(Long eventId, UpdateEventRequest request) {
+    public ApiMessageResponse updateEvent(Long eventId, UpdateEventRequest request, MultipartFile bannerimg) {
         validateEventSchedule(request.getStartDateTime(), request.getEndDateTime());
         validateTicketTypes(request.getTicketTypes().size());
 
@@ -93,13 +125,17 @@ public class EventServiceImpl implements EventService {
         event.setStartDateTime(request.getStartDateTime());
         event.setEndDateTime(request.getEndDateTime());
 
+        if (hasBannerFile(bannerimg)) {
+            replaceEventBanner(event, bannerimg);
+        }
+
         // TODO validate sold-ticket quantities before allowing ticket structure changes.
         event.getTicketTypes().clear();
         event.getTicketTypes().addAll(eventMapper.toTicketTypeEntities(request.getTicketTypes(), event));
 
         return ApiMessageResponse.builder()
                 .message("Event updated successfully")
-                .resourceId(event.getId())
+                .resourceId(event.getEvent_id())
                 .build();
     }
 
@@ -111,7 +147,7 @@ public class EventServiceImpl implements EventService {
         event.setStatus(request.getStatus());
         return ApiMessageResponse.builder()
                 .message("Event status updated successfully")
-                .resourceId(event.getId())
+                .resourceId(event.getEvent_id())
                 .build();
     }
 
@@ -126,7 +162,7 @@ public class EventServiceImpl implements EventService {
         event.setStatus(EventStatus.CANCELLED);
         return ApiMessageResponse.builder()
                 .message("Event deactivated successfully")
-                .resourceId(event.getId())
+                .resourceId(event.getEvent_id())
                 .build();
     }
 
@@ -279,5 +315,77 @@ public class EventServiceImpl implements EventService {
 
         String trimmedValue = value.trim();
         return trimmedValue.isEmpty() ? null : trimmedValue;
+    }
+
+    private boolean hasBannerFile(MultipartFile bannerimg) {
+        return bannerimg != null && !bannerimg.isEmpty();
+    }
+
+    private CommonFileSavedBinaryDataDto uploadBanner(MultipartFile bannerimg) {
+        return fileService.createResource(bannerimg, BANNER_DIRECTORY, bucketName);
+    }
+
+    private void replaceEventBanner(Event event, MultipartFile bannerimg) {
+        CommonFileSavedBinaryDataDto resource = null;
+        EventBanner existingBanner = eventBannerRepository.findByEvent_Event_id(event.getEvent_id()).orElse(null);
+
+        try {
+            if (existingBanner != null) {
+                fileService.deleteResource(
+                        bucketName,
+                        fileDataExtractor.byteArrayToString(existingBanner.getDirectory()),
+                        fileDataExtractor.byteArrayToString(existingBanner.getFileName())
+                );
+            }
+
+            resource = uploadBanner(bannerimg);
+            event.setBannerUrl(fileDataExtractor.byteArrayToString(fileDataExtractor.blobToByteArray(resource.getResourceUrl())));
+
+            if (existingBanner == null) {
+                saveBannerMetadata(event, resource);
+                return;
+            }
+
+            existingBanner.setCreatedDate(new Date());
+            existingBanner.setDirectory(resource.getDirectory().getBytes());
+            existingBanner.setFileName(fileDataExtractor.blobToByteArray(resource.getFileName()));
+            existingBanner.setHash(fileDataExtractor.blobToByteArray(resource.getHash()));
+            existingBanner.setResourceUrl(fileDataExtractor.blobToByteArray(resource.getResourceUrl()));
+            existingBanner.setEvent(event);
+            eventBannerRepository.save(existingBanner);
+        } catch (Exception ex) {
+            cleanupCreatedResource(resource);
+            throw new IllegalStateException("Failed to update event banner", ex);
+        }
+    }
+
+    private void saveBannerMetadata(Event event, CommonFileSavedBinaryDataDto resource) throws SQLException, IOException {
+        EventBanner eventBanner = EventBanner.builder()
+                .propertyId(UUID.randomUUID().toString())
+                .directory(resource.getDirectory().getBytes())
+                .fileName(fileDataExtractor.blobToByteArray(resource.getFileName()))
+                .resourceUrl(fileDataExtractor.blobToByteArray(resource.getResourceUrl()))
+                .hash(fileDataExtractor.blobToByteArray(resource.getHash()))
+                .createdDate(new Date())
+                .event(event)
+                .build();
+
+        eventBannerRepository.save(eventBanner);
+        event.setEventBanner(eventBanner);
+    }
+
+    private void cleanupCreatedResource(CommonFileSavedBinaryDataDto resource) {
+        if (resource == null) {
+            return;
+        }
+
+        try {
+            fileService.deleteResource(
+                    bucketName,
+                    resource.getDirectory(),
+                    fileDataExtractor.extractActualFileName(new InputStreamReader(resource.getFileName().getBinaryStream()))
+            );
+        } catch (Exception ignored) {
+        }
     }
 }

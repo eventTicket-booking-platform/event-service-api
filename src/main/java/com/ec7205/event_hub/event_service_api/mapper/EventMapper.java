@@ -49,7 +49,7 @@ public class EventMapper {
 
     public EventSummaryResponse toEventSummaryResponse(Event event) {
         return EventSummaryResponse.builder()
-                .eventId(event.getId())
+                .eventId(event.getEvent_id())
                 .title(event.getTitle())
                 .categoryName(event.getCategory().getName())
                 .city(event.getVenue().getCity())
@@ -61,7 +61,7 @@ public class EventMapper {
 
     public AdminEventSummaryResponse toAdminEventSummaryResponse(Event event) {
         return AdminEventSummaryResponse.builder()
-                .eventId(event.getId())
+                .eventId(event.getEvent_id())
                 .title(event.getTitle())
                 .categoryName(event.getCategory().getName())
                 .city(event.getVenue().getCity())
@@ -74,7 +74,7 @@ public class EventMapper {
 
     public EventDetailResponse toEventDetailResponse(Event event) {
         return EventDetailResponse.builder()
-                .eventId(event.getId())
+                .eventId(event.getEvent_id())
                 .title(event.getTitle())
                 .description(event.getDescription())
                 .category(categoryMapper.toResponse(event.getCategory()))
@@ -89,7 +89,7 @@ public class EventMapper {
 
     public BookingInfoResponse toBookingInfoResponse(Event event) {
         return BookingInfoResponse.builder()
-                .eventId(event.getId())
+                .eventId(event.getEvent_id())
                 .title(event.getTitle())
                 .status(event.getStatus())
                 .startDateTime(event.getStartDateTime())
