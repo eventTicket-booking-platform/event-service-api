@@ -36,9 +36,6 @@ public class CreateEventRequest {
     @Valid
     private VenueRequest venue;
 
-    @Size(max = 500, message = "Banner URL must not exceed 500 characters")
-    private String bannerUrl;
-
     @NotNull(message = "Event start date and time is required")
     private LocalDateTime startDateTime;
 
@@ -47,8 +44,8 @@ public class CreateEventRequest {
 
     private EventStatus status;
 
-    @NotNull(message = "Created by user id is required")
-    private Long createdBy;
+    @NotBlank(message = "Created by user id is required")
+    private String createdBy;
 
     @NotEmpty(message = "At least one ticket type is required")
     @Valid

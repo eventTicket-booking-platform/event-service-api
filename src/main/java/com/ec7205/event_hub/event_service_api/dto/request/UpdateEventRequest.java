@@ -35,9 +35,6 @@ public class UpdateEventRequest {
     @Valid
     private VenueRequest venue;
 
-    @Size(max = 500, message = "Banner URL must not exceed 500 characters")
-    private String bannerUrl;
-
     @NotNull(message = "Event start date and time is required")
     private LocalDateTime startDateTime;
 

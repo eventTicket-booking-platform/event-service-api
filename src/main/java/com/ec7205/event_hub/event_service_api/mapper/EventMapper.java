@@ -11,6 +11,7 @@ import com.ec7205.event_hub.event_service_api.dto.response.VenueResponse;
 import com.ec7205.event_hub.event_service_api.entity.Event;
 import com.ec7205.event_hub.event_service_api.entity.TicketType;
 import com.ec7205.event_hub.event_service_api.entity.Venue;
+import com.ec7205.event_hub.event_service_api.utils.FileDataExtractor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -21,6 +22,7 @@ import java.util.List;
 public class EventMapper {
 
     private final CategoryMapper categoryMapper;
+    private final FileDataExtractor fileDataExtractor;
 
     public Venue toVenueEntity(VenueRequest request) {
         return Venue.builder()
@@ -53,7 +55,7 @@ public class EventMapper {
                 .title(event.getTitle())
                 .categoryName(event.getCategory().getName())
                 .city(event.getVenue().getCity())
-                .bannerUrl(event.getBannerUrl())
+                .bannerUrl(resolveBannerUrl(event))
                 .startDateTime(event.getStartDateTime())
                 .endDateTime(event.getEndDateTime())
                 .build();
@@ -65,7 +67,7 @@ public class EventMapper {
                 .title(event.getTitle())
                 .categoryName(event.getCategory().getName())
                 .city(event.getVenue().getCity())
-                .bannerUrl(event.getBannerUrl())
+                .bannerUrl(resolveBannerUrl(event))
                 .startDateTime(event.getStartDateTime())
                 .endDateTime(event.getEndDateTime())
                 .status(event.getStatus())
@@ -79,7 +81,7 @@ public class EventMapper {
                 .description(event.getDescription())
                 .category(categoryMapper.toResponse(event.getCategory()))
                 .venue(toVenueResponse(event.getVenue()))
-                .bannerUrl(event.getBannerUrl())
+                .bannerUrl(resolveBannerUrl(event))
                 .startDateTime(event.getStartDateTime())
                 .endDateTime(event.getEndDateTime())
                 .status(event.getStatus())
@@ -114,5 +116,12 @@ public class EventMapper {
                 .price(ticketType.getPrice())
                 .totalQuantity(ticketType.getTotalQuantity())
                 .build();
+    }
+
+    private String resolveBannerUrl(Event event) {
+        if (event.getEventBanner() == null) {
+            return null;
+        }
+        return fileDataExtractor.byteArrayToString(event.getEventBanner().getResourceUrl());
     }
 }

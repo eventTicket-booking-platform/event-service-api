@@ -33,9 +33,12 @@ public class FileServiceImpl implements FileService {
                     safeOriginalFilename,
                     UUID.randomUUID().toString()
             );
+            ObjectMetadata metadata = new ObjectMetadata();
+            metadata.setContentLength(file.getSize());
+            metadata.setContentType(file.getContentType());
 
             PutObjectResult putObjectResult = s3Client.putObject(
-                    new PutObjectRequest(bucket, directory + newFileName, file.getInputStream(), new ObjectMetadata())
+                    new PutObjectRequest(bucket, directory + newFileName, file.getInputStream(), metadata)
                             .withCannedAcl(CannedAccessControlList.PublicRead)
             );
 

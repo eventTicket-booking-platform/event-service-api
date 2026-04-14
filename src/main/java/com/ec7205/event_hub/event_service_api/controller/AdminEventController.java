@@ -1,10 +1,14 @@
 package com.ec7205.event_hub.event_service_api.controller;
 
+import com.ec7205.event_hub.event_service_api.exception.BadRequestException;
 import com.ec7205.event_hub.event_service_api.dto.request.CreateEventRequest;
 import com.ec7205.event_hub.event_service_api.dto.request.UpdateEventRequest;
 import com.ec7205.event_hub.event_service_api.dto.request.UpdateEventStatusRequest;
 import com.ec7205.event_hub.event_service_api.dto.response.ApiMessageResponse;
 import com.ec7205.event_hub.event_service_api.dto.response.paginate.AdminEventPaginateResponseDto;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validator;
 import com.ec7205.event_hub.event_service_api.service.EventService;
 import com.ec7205.event_hub.event_service_api.utils.enums.EventStatus;
 import jakarta.validation.Valid;
@@ -32,21 +36,25 @@ import org.springframework.web.multipart.MultipartFile;
 public class AdminEventController {
 
     private final EventService eventService;
+    private final ObjectMapper objectMapper;
+    private final Validator validator;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiMessageResponse> createEvent(
-            @Valid @RequestPart("request") CreateEventRequest request,
+            @RequestPart("request") String requestJson,
             @RequestPart(value = "bannerimg", required = false) MultipartFile bannerimg
     ) {
+        CreateEventRequest request = parseAndValidate(requestJson, CreateEventRequest.class);
         return ResponseEntity.ok(eventService.createEvent(request, bannerimg));
     }
 
     @PutMapping(value = "/{eventId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiMessageResponse> updateEvent(
             @PathVariable Long eventId,
-            @Valid @RequestPart("request") UpdateEventRequest request,
+            @RequestPart("request") String requestJson,
             @RequestPart(value = "bannerimg", required = false) MultipartFile bannerimg
     ) {
+        UpdateEventRequest request = parseAndValidate(requestJson, UpdateEventRequest.class);
         return ResponseEntity.ok(eventService.updateEvent(eventId, request, bannerimg));
     }
 
@@ -70,5 +78,21 @@ public class AdminEventController {
             @PageableDefault(size = 20) Pageable pageable
     ) {
         return ResponseEntity.ok(eventService.getAdminEvents(search, status, pageable));
+    }
+
+    private <T> T parseAndValidate(String requestJson, Class<T> requestType) {
+        try {
+            T request = objectMapper.readValue(requestJson, requestType);
+            var violations = validator.validate(request);
+            if (!violations.isEmpty()) {
+                ConstraintViolation<T> violation = violations.iterator().next();
+                throw new BadRequestException(violation.getPropertyPath() + ": " + violation.getMessage());
+            }
+            return request;
+        } catch (BadRequestException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new BadRequestException("Invalid request payload");
+        }
     }
 }

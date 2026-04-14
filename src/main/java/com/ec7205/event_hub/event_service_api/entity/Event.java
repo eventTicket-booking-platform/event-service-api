@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "event")
+@Table(name = "events")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -19,6 +19,7 @@ public class Event {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
     private Long event_id;
 
     @Column(nullable = false, length = 150)
@@ -34,9 +35,6 @@ public class Event {
     @ManyToOne(fetch = FetchType.LAZY, optional = false, cascade = CascadeType.ALL)
     @JoinColumn(name = "venue_id", nullable = false)
     private Venue venue;
-    
-    @Column(name = "banner_url", length = 500)
-    private String bannerUrl;
 
     @OneToOne(mappedBy = "event", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
     private EventBanner eventBanner;
@@ -51,8 +49,8 @@ public class Event {
     @Column(nullable = false, length = 20)
     private EventStatus status;
 
-    @Column(name = "created_by", nullable = false)
-    private Long createdBy;
+    @Column(name = "created_by", nullable = false, length = 100)
+    private String createdBy;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

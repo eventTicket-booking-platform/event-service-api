@@ -36,8 +36,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.InputStreamReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.Date;
@@ -78,7 +78,6 @@ public class EventServiceImpl implements EventService {
                 .description(request.getDescription().trim())
                 .category(category)
                 .venue(eventMapper.toVenueEntity(request.getVenue()))
-                .bannerUrl(trimToNull(request.getBannerUrl()))
                 .startDateTime(request.getStartDateTime())
                 .endDateTime(request.getEndDateTime())
                 .status(request.getStatus() == null ? EventStatus.DRAFT : request.getStatus())
@@ -93,7 +92,6 @@ public class EventServiceImpl implements EventService {
         if (hasBannerFile(bannerimg)) {
             CommonFileSavedBinaryDataDto resource = uploadBanner(bannerimg);
             try {
-                savedEvent.setBannerUrl(fileDataExtractor.byteArrayToString(fileDataExtractor.blobToByteArray(resource.getResourceUrl())));
                 saveBannerMetadata(savedEvent, resource);
             } catch (SQLException | IOException ex) {
                 cleanupCreatedResource(resource);
@@ -121,7 +119,6 @@ public class EventServiceImpl implements EventService {
         event.setDescription(request.getDescription().trim());
         event.setCategory(category);
         eventMapper.updateVenue(event.getVenue(), request.getVenue());
-        event.setBannerUrl(trimToNull(request.getBannerUrl()));
         event.setStartDateTime(request.getStartDateTime());
         event.setEndDateTime(request.getEndDateTime());
 
@@ -308,15 +305,6 @@ public class EventServiceImpl implements EventService {
         );
     }
 
-    private String trimToNull(String value) {
-        if (value == null) {
-            return null;
-        }
-
-        String trimmedValue = value.trim();
-        return trimmedValue.isEmpty() ? null : trimmedValue;
-    }
-
     private boolean hasBannerFile(MultipartFile bannerimg) {
         return bannerimg != null && !bannerimg.isEmpty();
     }
@@ -327,7 +315,7 @@ public class EventServiceImpl implements EventService {
 
     private void replaceEventBanner(Event event, MultipartFile bannerimg) {
         CommonFileSavedBinaryDataDto resource = null;
-        EventBanner existingBanner = eventBannerRepository.findByEvent_Event_id(event.getEvent_id()).orElse(null);
+        EventBanner existingBanner = eventBannerRepository.findByEventId(event.getEvent_id()).orElse(null);
 
         try {
             if (existingBanner != null) {
@@ -339,7 +327,6 @@ public class EventServiceImpl implements EventService {
             }
 
             resource = uploadBanner(bannerimg);
-            event.setBannerUrl(fileDataExtractor.byteArrayToString(fileDataExtractor.blobToByteArray(resource.getResourceUrl())));
 
             if (existingBanner == null) {
                 saveBannerMetadata(event, resource);
@@ -370,8 +357,8 @@ public class EventServiceImpl implements EventService {
                 .event(event)
                 .build();
 
-        eventBannerRepository.save(eventBanner);
-        event.setEventBanner(eventBanner);
+        EventBanner persistedBanner = eventBannerRepository.save(eventBanner);
+        event.setEventBanner(persistedBanner);
     }
 
     private void cleanupCreatedResource(CommonFileSavedBinaryDataDto resource) {
@@ -388,4 +375,5 @@ public class EventServiceImpl implements EventService {
         } catch (Exception ignored) {
         }
     }
+
 }
