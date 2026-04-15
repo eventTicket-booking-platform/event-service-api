@@ -17,6 +17,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -40,6 +41,7 @@ public class AdminEventController {
     private final Validator validator;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyAuthority('admin','host')")
     public ResponseEntity<ApiMessageResponse> createEvent(
             @RequestPart("request") String requestJson,
             @RequestPart(value = "bannerimg", required = false) MultipartFile bannerimg
@@ -49,6 +51,7 @@ public class AdminEventController {
     }
 
     @PutMapping(value = "/{eventId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyAuthority('admin','host')")
     public ResponseEntity<ApiMessageResponse> updateEvent(
             @PathVariable Long eventId,
             @RequestPart("request") String requestJson,
@@ -59,6 +62,7 @@ public class AdminEventController {
     }
 
     @PatchMapping("/{eventId}/status")
+    @PreAuthorize("hasAnyAuthority('admin','host')")
     public ResponseEntity<ApiMessageResponse> updateEventStatus(
             @PathVariable Long eventId,
             @Valid @RequestBody UpdateEventStatusRequest request
@@ -67,11 +71,13 @@ public class AdminEventController {
     }
 
     @DeleteMapping("/{eventId}")
+    @PreAuthorize("hasAnyAuthority('admin','host')")
     public ResponseEntity<ApiMessageResponse> deleteEvent(@PathVariable Long eventId) {
         return ResponseEntity.ok(eventService.deleteEvent(eventId));
     }
 
     @GetMapping("/admin/all")
+    @PreAuthorize("hasAnyAuthority('admin','host')")
     public ResponseEntity<AdminEventPaginateResponseDto> getAdminEvents(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) EventStatus status,

@@ -6,6 +6,7 @@ import com.ec7205.event_hub.event_service_api.dto.response.TicketTypeResponse;
 import com.ec7205.event_hub.event_service_api.service.InternalEventService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,16 +22,19 @@ public class InternalEventController {
     private final InternalEventService internalEventService;
 
     @GetMapping("/{eventId}/booking-info")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<BookingInfoResponse> getBookingInfo(@PathVariable Long eventId) {
         return ResponseEntity.ok(internalEventService.getBookingInfo(eventId));
     }
 
     @GetMapping("/{eventId}/exists")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<EventExistsResponse> eventExists(@PathVariable Long eventId) {
         return ResponseEntity.ok(internalEventService.eventExists(eventId));
     }
 
     @GetMapping("/{eventId}/ticket-types")
+    @PreAuthorize("permitAll()")
     public ResponseEntity<List<TicketTypeResponse>> getTicketTypes(@PathVariable Long eventId) {
         return ResponseEntity.ok(internalEventService.getEventTicketTypes(eventId));
     }
