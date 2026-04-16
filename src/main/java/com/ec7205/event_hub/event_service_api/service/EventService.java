@@ -27,5 +27,7 @@ public interface EventService {
 
     EventDetailResponse getPublicEventDetails(Long eventId);
 
+    EventDetailResponse getAdminEventDetails(Long eventId);
+
     AdminEventPaginateResponseDto getAdminEvents(String search, EventStatus status, Pageable pageable);
 }

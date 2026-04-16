@@ -52,7 +52,8 @@ import java.util.UUID;
 @Transactional
 public class EventServiceImpl implements EventService {
 
-    private static final Set<EventStatus> MANAGEABLE_EVENT_STATUSES = EnumSet.of(EventStatus.DRAFT, EventStatus.PUBLISHED);
+    private static final Set<EventStatus> MANAGEABLE_EVENT_STATUSES =
+            EnumSet.of(EventStatus.DRAFT, EventStatus.PUBLISHED, EventStatus.CANCELLED);
 
     private final EventRepository eventRepository;
     private final EventBannerRepository eventBannerRepository;
@@ -193,6 +194,13 @@ public class EventServiceImpl implements EventService {
 
     @Override
     @Transactional(readOnly = true)
+    public EventDetailResponse getAdminEventDetails(Long eventId) {
+        Event event = getDetailedEventOrThrow(eventId);
+        return eventMapper.toEventDetailResponse(event);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public AdminEventPaginateResponseDto getAdminEvents(String search, EventStatus status, Pageable pageable) {
         Specification<Event> specification = Specification.where(titleContains(search))
                 .and(hasStatus(status));
@@ -235,7 +243,7 @@ public class EventServiceImpl implements EventService {
 
     private void ensureEventCanBeModified(Event event) {
         if (!MANAGEABLE_EVENT_STATUSES.contains(event.getStatus())) {
-            throw new ConflictException("Only draft or published events can be updated");
+            throw new ConflictException("Only draft, published, or cancelled events can be updated");
         }
     }
 
@@ -247,7 +255,8 @@ public class EventServiceImpl implements EventService {
         boolean allowed = switch (currentStatus) {
             case DRAFT -> EnumSet.of(EventStatus.PUBLISHED, EventStatus.CANCELLED).contains(targetStatus);
             case PUBLISHED -> EnumSet.of(EventStatus.CANCELLED, EventStatus.COMPLETED).contains(targetStatus);
-            case CANCELLED, COMPLETED -> false;
+            case CANCELLED -> targetStatus == EventStatus.PUBLISHED;
+            case COMPLETED -> false;
         };
 
         if (!allowed) {

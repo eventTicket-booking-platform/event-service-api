@@ -19,6 +19,7 @@ public class BookingInfoResponse {
 
     private Long eventId;
     private String title;
+    private String bannerUrl;
     private EventStatus status;
     private LocalDateTime startDateTime;
     private LocalDateTime endDateTime;

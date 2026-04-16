@@ -5,6 +5,7 @@ import com.ec7205.event_hub.event_service_api.dto.request.CreateEventRequest;
 import com.ec7205.event_hub.event_service_api.dto.request.UpdateEventRequest;
 import com.ec7205.event_hub.event_service_api.dto.request.UpdateEventStatusRequest;
 import com.ec7205.event_hub.event_service_api.dto.response.ApiMessageResponse;
+import com.ec7205.event_hub.event_service_api.dto.response.EventDetailResponse;
 import com.ec7205.event_hub.event_service_api.dto.response.paginate.AdminEventPaginateResponseDto;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.ConstraintViolation;
@@ -74,6 +75,12 @@ public class AdminEventController {
     @PreAuthorize("hasAnyAuthority('admin','host')")
     public ResponseEntity<ApiMessageResponse> deleteEvent(@PathVariable Long eventId) {
         return ResponseEntity.ok(eventService.deleteEvent(eventId));
+    }
+
+    @GetMapping("/admin/{eventId}")
+    @PreAuthorize("hasAnyAuthority('admin','host')")
+    public ResponseEntity<EventDetailResponse> getAdminEventDetails(@PathVariable Long eventId) {
+        return ResponseEntity.ok(eventService.getAdminEventDetails(eventId));
     }
 
     @GetMapping("/admin/all")

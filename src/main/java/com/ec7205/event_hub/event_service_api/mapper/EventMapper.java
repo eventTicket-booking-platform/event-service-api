@@ -93,6 +93,7 @@ public class EventMapper {
         return BookingInfoResponse.builder()
                 .eventId(event.getEvent_id())
                 .title(event.getTitle())
+                .bannerUrl(resolveBannerUrl(event))
                 .status(event.getStatus())
                 .startDateTime(event.getStartDateTime())
                 .endDateTime(event.getEndDateTime())
