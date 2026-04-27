@@ -11,7 +11,7 @@
     <groupId>com.ec7205.event-hub</groupId>
     <artifactId>event-service-api</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>hotel-management-system-api</name>
+    <name>event-service-api-api</name>
     <description>My first springboot application</description>
     <url/>
     <licenses>
