@@ -25,4 +25,17 @@ public interface TicketTypeRepository extends JpaRepository<TicketType, Long> {
             @Param("ticketTypeId") Long ticketTypeId,
             @Param("quantity") Integer quantity
     );
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Transactional
+    @Query("""
+        update TicketType tt
+        set tt.availableQuantity = tt.availableQuantity + :quantity
+        where tt.id = :ticketTypeId
+            and tt.availableQuantity + :quantity <= tt.totalQuantity
+    """)
+    int releaseTickets(
+            @Param("ticketTypeId") Long ticketTypeId,
+            @Param("quantity") Integer quantity
+    );
 }

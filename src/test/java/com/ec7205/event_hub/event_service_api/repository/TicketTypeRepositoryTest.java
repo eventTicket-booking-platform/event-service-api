@@ -225,4 +225,104 @@ class TicketTypeRepositoryTest {
         assertEquals(10, successCount);
         assertEquals(0, updatedTicket.getAvailableQuantity());
     }
+
+    @Test
+    void shouldReleaseReservedTickets() {
+
+        Category category = categoryRepository.save(
+                Category.builder()
+                        .name("Concurrent Category")
+                        .description("Test category")
+                        .isActive(true)
+                        .build()
+        );
+
+        Venue venue = Venue.builder()
+                .name("Concurrent Venue")
+                .city("Colombo")
+                .address("Test Address")
+                .build();
+
+        Event event = eventRepository.save(
+                Event.builder()
+                        .title("Concurrent Event")
+                        .description("Test event")
+                        .category(category)
+                        .venue(venue)
+                        .startDateTime(LocalDateTime.now().plusDays(1))
+                        .endDateTime(LocalDateTime.now().plusDays(1).plusHours(2))
+                        .status(EventStatus.PUBLISHED)
+                        .createdBy("test-user")
+                        .build()
+        );
+
+        TicketType ticketType = ticketTypeRepository.save(
+                TicketType.builder()
+                        .name("Standard")
+                        .price(BigDecimal.valueOf(2500))
+                        .totalQuantity(10)
+                        .availableQuantity(7)
+                        .event(event)
+                        .build()
+        );
+
+        int updatedRows =
+                ticketTypeRepository.releaseTickets(ticketType.getId(), 3);
+
+        TicketType updated =
+                ticketTypeRepository.findById(ticketType.getId()).orElseThrow();
+
+        assertEquals(1, updatedRows);
+        assertEquals(10, updated.getAvailableQuantity());
+    }
+
+    @Test
+    void shouldNotReleaseTicketsBeyondTotalQuantity() {
+
+        Category category = categoryRepository.save(
+                Category.builder()
+                        .name("Release Limit Category")
+                        .description("Test category")
+                        .isActive(true)
+                        .build()
+        );
+
+        Venue venue = Venue.builder()
+                .name("Release Limit Venue")
+                .city("Colombo")
+                .address("Test Address")
+                .build();
+
+        Event event = eventRepository.save(
+                Event.builder()
+                        .title("Release Limit Event")
+                        .description("Test event")
+                        .category(category)
+                        .venue(venue)
+                        .startDateTime(LocalDateTime.now().plusDays(1))
+                        .endDateTime(LocalDateTime.now().plusDays(1).plusHours(2))
+                        .status(EventStatus.PUBLISHED)
+                        .createdBy("test-user")
+                        .build()
+        );
+
+        TicketType ticketType = ticketTypeRepository.save(
+                TicketType.builder()
+                        .name("Standard")
+                        .price(BigDecimal.valueOf(2500))
+                        .totalQuantity(10)
+                        .availableQuantity(8)
+                        .event(event)
+                        .build()
+        );
+
+        int updatedRows =
+                ticketTypeRepository.releaseTickets(ticketType.getId(), 5);
+
+        TicketType updated =
+                ticketTypeRepository.findById(ticketType.getId()).orElseThrow();
+
+        assertEquals(0, updatedRows);
+        assertEquals(8, updated.getAvailableQuantity());
+    }
 }

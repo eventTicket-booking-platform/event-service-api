@@ -29,6 +29,15 @@ public class InternalEventController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/{eventId}/release")
+    public ResponseEntity<Void> releaseTickets(
+            @PathVariable Long eventId,
+            @Valid @RequestBody ReserveTicketsRequest request
+    ) {
+        internalEventService.releaseTickets(eventId, request);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/{eventId}/booking-info")
     @PreAuthorize("permitAll()")
     public ResponseEntity<BookingInfoResponse> getBookingInfo(@PathVariable Long eventId) {

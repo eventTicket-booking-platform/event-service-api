@@ -17,4 +17,6 @@ public interface InternalEventService {
     List<TicketTypeResponse> getEventTicketTypes(Long eventId);
 
     void reserveTickets(Long eventId, ReserveTicketsRequest request);
+
+    void releaseTickets(Long eventId, ReserveTicketsRequest request);
 }

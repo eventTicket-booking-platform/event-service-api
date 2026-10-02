@@ -70,6 +70,27 @@ public class InternalEventServiceImpl implements InternalEventService {
         }
     }
 
+    @Override
+    @Transactional
+    public void releaseTickets(Long eventId, ReserveTicketsRequest request) {
+
+        getDetailedEventOrThrow(eventId);
+
+        for (ReserveTicketRequest ticket : request.getTickets()) {
+
+            int updatedRows = ticketTypeRepository.releaseTickets(
+                    ticket.getTicketTypeId(),
+                    ticket.getQuantity()
+            );
+
+            if (updatedRows == 0) {
+                throw new ConflictException(
+                        "Unable to release tickets for ticket type: "
+                                + ticket.getTicketTypeId()
+                );
+            }
+        }
+    }
     private Event getDetailedEventOrThrow(Long eventId) {
         return eventRepository.findDetailedById(eventId)
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found for id: " + eventId));
