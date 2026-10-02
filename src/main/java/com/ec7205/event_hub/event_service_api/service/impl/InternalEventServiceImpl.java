@@ -1,12 +1,16 @@
 package com.ec7205.event_hub.event_service_api.service.impl;
 
+import com.ec7205.event_hub.event_service_api.dto.request.ReserveTicketRequest;
+import com.ec7205.event_hub.event_service_api.dto.request.ReserveTicketsRequest;
 import com.ec7205.event_hub.event_service_api.dto.response.BookingInfoResponse;
 import com.ec7205.event_hub.event_service_api.dto.response.EventExistsResponse;
 import com.ec7205.event_hub.event_service_api.dto.response.TicketTypeResponse;
 import com.ec7205.event_hub.event_service_api.entity.Event;
+import com.ec7205.event_hub.event_service_api.exception.ConflictException;
 import com.ec7205.event_hub.event_service_api.exception.ResourceNotFoundException;
 import com.ec7205.event_hub.event_service_api.mapper.EventMapper;
 import com.ec7205.event_hub.event_service_api.repository.EventRepository;
+import com.ec7205.event_hub.event_service_api.repository.TicketTypeRepository;
 import com.ec7205.event_hub.event_service_api.service.InternalEventService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,6 +24,7 @@ import java.util.List;
 public class InternalEventServiceImpl implements InternalEventService {
 
     private final EventRepository eventRepository;
+    private final TicketTypeRepository ticketTypeRepository;
     private final EventMapper eventMapper;
 
     @Override
@@ -41,6 +46,28 @@ public class InternalEventServiceImpl implements InternalEventService {
         return event.getTicketTypes().stream()
                 .map(eventMapper::toTicketTypeResponse)
                 .toList();
+    }
+
+    @Override
+    @Transactional
+    public void reserveTickets(Long eventId, ReserveTicketsRequest request) {
+
+        getDetailedEventOrThrow(eventId);
+
+        for (ReserveTicketRequest ticket : request.getTickets()) {
+
+            int updatedRows = ticketTypeRepository.reserveTickets(
+                    ticket.getTicketTypeId(),
+                    ticket.getQuantity()
+            );
+
+            if (updatedRows == 0) {
+                throw new ConflictException(
+                        "Not enough tickets available for ticket type: "
+                                + ticket.getTicketTypeId()
+                );
+            }
+        }
     }
 
     private Event getDetailedEventOrThrow(Long eventId) {

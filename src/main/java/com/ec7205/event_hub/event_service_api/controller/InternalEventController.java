@@ -1,16 +1,15 @@
 package com.ec7205.event_hub.event_service_api.controller;
 
+import com.ec7205.event_hub.event_service_api.dto.request.ReserveTicketsRequest;
 import com.ec7205.event_hub.event_service_api.dto.response.BookingInfoResponse;
 import com.ec7205.event_hub.event_service_api.dto.response.EventExistsResponse;
 import com.ec7205.event_hub.event_service_api.dto.response.TicketTypeResponse;
 import com.ec7205.event_hub.event_service_api.service.InternalEventService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -20,6 +19,15 @@ import java.util.List;
 public class InternalEventController {
 
     private final InternalEventService internalEventService;
+
+    @PostMapping("/{eventId}/reserve")
+    public ResponseEntity<Void> reserveTickets(
+            @PathVariable Long eventId,
+            @Valid @RequestBody ReserveTicketsRequest request
+    ) {
+        internalEventService.reserveTickets(eventId, request);
+        return ResponseEntity.noContent().build();
+    }
 
     @GetMapping("/{eventId}/booking-info")
     @PreAuthorize("permitAll()")

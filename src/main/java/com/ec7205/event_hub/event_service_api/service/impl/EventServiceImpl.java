@@ -65,7 +65,8 @@ public class EventServiceImpl implements EventService {
     @Value("${bucketName}")
     private String bucketName;
 
-    private static final String BANNER_DIRECTORY = "banner/";
+    @Value("${aws.s3.banner-directory:banner}")
+    private String bannerDirectory;
 
     @Override
     public ApiMessageResponse createEvent(CreateEventRequest request, MultipartFile bannerimg) {
@@ -319,42 +320,55 @@ public class EventServiceImpl implements EventService {
     }
 
     private CommonFileSavedBinaryDataDto uploadBanner(MultipartFile bannerimg) {
-        return fileService.createResource(bannerimg, BANNER_DIRECTORY, bucketName);
+        return fileService.createResource(bannerimg, buildBannerDirectory(), bucketName);
+    }
+
+    private String buildBannerDirectory() {
+        return normalizeDirectory(bannerDirectory) + "/";
+    }
+
+    private String normalizeDirectory(String directory) {
+        return directory.replaceAll("^/+", "").replaceAll("/+$", "");
     }
 
     private void replaceEventBanner(Event event, MultipartFile bannerimg) {
-        CommonFileSavedBinaryDataDto resource = null;
         EventBanner existingBanner = eventBannerRepository.findByEventId(event.getEvent_id()).orElse(null);
 
+        String oldDirectory = null;
+        String oldFileName = null;
+
+        if (existingBanner != null) {
+            oldDirectory = fileDataExtractor.byteArrayToString(existingBanner.getDirectory());
+            oldFileName = fileDataExtractor.byteArrayToString(existingBanner.getFileName());
+        }
+
+        CommonFileSavedBinaryDataDto resource = uploadBanner(bannerimg);
+
         try {
-            if (existingBanner != null) {
-                fileService.deleteResource(
-                        bucketName,
-                        fileDataExtractor.byteArrayToString(existingBanner.getDirectory()),
-                        fileDataExtractor.byteArrayToString(existingBanner.getFileName())
-                );
-            }
-
-            resource = uploadBanner(bannerimg);
-
             if (existingBanner == null) {
                 saveBannerMetadata(event, resource);
-                return;
+            } else {
+                existingBanner.setCreatedDate(new Date());
+                existingBanner.setDirectory(resource.getDirectory().getBytes());
+                existingBanner.setFileName(fileDataExtractor.blobToByteArray(resource.getFileName()));
+                existingBanner.setHash(fileDataExtractor.blobToByteArray(resource.getHash()));
+                existingBanner.setResourceUrl(fileDataExtractor.blobToByteArray(resource.getResourceUrl()));
+                existingBanner.setEvent(event);
+                eventBannerRepository.save(existingBanner);
             }
-
-            existingBanner.setCreatedDate(new Date());
-            existingBanner.setDirectory(resource.getDirectory().getBytes());
-            existingBanner.setFileName(fileDataExtractor.blobToByteArray(resource.getFileName()));
-            existingBanner.setHash(fileDataExtractor.blobToByteArray(resource.getHash()));
-            existingBanner.setResourceUrl(fileDataExtractor.blobToByteArray(resource.getResourceUrl()));
-            existingBanner.setEvent(event);
-            eventBannerRepository.save(existingBanner);
         } catch (Exception ex) {
             cleanupCreatedResource(resource);
-            throw new IllegalStateException("Failed to update event banner", ex);
+            throw new IllegalStateException("Failed to update event banner metadata", ex);
+        }
+
+        if (oldDirectory != null && oldFileName != null) {
+            try {
+                fileService.deleteResource(bucketName, oldDirectory, oldFileName);
+            } catch (Exception ignored) {
+                // Old S3 object cleanup must not fail the event update.
+            }
         }
     }
-
     private void saveBannerMetadata(Event event, CommonFileSavedBinaryDataDto resource) throws SQLException, IOException {
         EventBanner eventBanner = EventBanner.builder()
                 .propertyId(UUID.randomUUID().toString())

@@ -25,7 +25,10 @@ public class TicketType {
     private BigDecimal price;
 
     @Column(name = "total_quantity", nullable = false)
-    private Integer totalQuantity;
+    private Integer totalQuantity; // originally available tikets for Event
+
+    @Column(name = "available_quantity", nullable = false)
+    private Integer availableQuantity; // ticker for avaulable to booking
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "event_id", nullable = false)
