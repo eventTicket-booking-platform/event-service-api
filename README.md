@@ -161,3 +161,9 @@ Default port: `9091`
 
 - Event create and update use multipart form data with a `request` JSON part and optional `bannerimg` file.
 - Internal endpoints are open inside the service and are meant for service-to-service use.
+
+## How to run integration tests
+
+Run `mvn test` for the existing tests without Docker. With Docker running Linux containers, run `mvn verify -Pintegration-tests` to also run the opt-in `*IT` Testcontainers tests. Images are downloaded on first use; connection addresses and ports come from the containers. The integration profile fails if Docker is unavailable.
+
+MySQL coverage: 20 concurrent reservation attempts against stock of 10, with exactly 10 successes and no negative inventory.

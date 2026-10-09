@@ -1,7 +1,6 @@
 package com.ec7205.event_hub.event_service_api.service.impl;
 
 import com.amazonaws.services.s3.AmazonS3Client;
-import com.amazonaws.services.s3.model.CannedAccessControlList;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.amazonaws.services.s3.model.PutObjectResult;
@@ -13,8 +12,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.sql.rowset.serial.SerialBlob;
-import java.io.IOException;
-import java.sql.SQLException;
 import java.util.UUID;
 
 @Service
@@ -39,16 +36,19 @@ public class FileServiceImpl implements FileService {
 
             PutObjectResult putObjectResult = s3Client.putObject(
                     new PutObjectRequest(bucket, directory + newFileName, file.getInputStream(), metadata)
-                            .withCannedAcl(CannedAccessControlList.PublicRead)
             );
+            String hash = putObjectResult.getETag();
+            if (hash == null || hash.isBlank()) {
+                hash = newFileName;
+            }
 
             return new CommonFileSavedBinaryDataDto(
-                    new SerialBlob(putObjectResult.getContentMd5().getBytes()),
+                    new SerialBlob(hash.getBytes()),
                     directory,
                     new SerialBlob(newFileName.getBytes()),
                     new SerialBlob(s3Client.getResourceUrl(bucket, directory + newFileName).toString().getBytes())
             );
-        } catch (IOException | SQLException ex) {
+        } catch (Exception ex) {
             throw new IllegalStateException("Failed to upload file to S3", ex);
         }
     }

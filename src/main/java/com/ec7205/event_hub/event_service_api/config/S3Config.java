@@ -13,10 +13,10 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class S3Config {
 
-    @Value("${accessKey}")
+    @Value("${AWS_ACCESS_KEY_ID:${accessKey:}}")
     private String accessKey;
 
-    @Value("${secret}")
+    @Value("${AWS_SECRET_ACCESS_KEY:${secret:}}")
     private String secret;
 
     @Value("${region}")
@@ -24,19 +24,31 @@ public class S3Config {
 
     @Bean
     public AmazonS3 s3() {
-        AWSCredentials awsCredentials = new BasicAWSCredentials(accessKey, secret);
         return AmazonS3ClientBuilder.standard()
                 .withRegion(region)
-                .withCredentials(new AWSStaticCredentialsProvider(awsCredentials))
+                .withCredentials(new AWSStaticCredentialsProvider(awsCredentials()))
                 .build();
     }
 
     @Bean
     public AmazonS3Client s3Client() {
-        AWSCredentials awsCredentials = new BasicAWSCredentials(accessKey, secret);
         return (AmazonS3Client) AmazonS3ClientBuilder.standard()
                 .withRegion(region)
-                .withCredentials(new AWSStaticCredentialsProvider(awsCredentials))
+                .withCredentials(new AWSStaticCredentialsProvider(awsCredentials()))
                 .build();
+    }
+
+    private AWSCredentials awsCredentials() {
+        if (!hasText(accessKey)) {
+            throw new IllegalStateException("AWS_ACCESS_KEY_ID is missing. Set it in event-service-api/.env or the run configuration.");
+        }
+        if (!hasText(secret)) {
+            throw new IllegalStateException("AWS_SECRET_ACCESS_KEY is missing. Set it in event-service-api/.env or the run configuration.");
+        }
+        return new BasicAWSCredentials(accessKey.trim(), secret.trim());
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 }
