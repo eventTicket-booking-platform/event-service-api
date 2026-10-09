@@ -22,6 +22,7 @@ import com.ec7205.event_hub.event_service_api.repository.CategoryRepository;
 import com.ec7205.event_hub.event_service_api.repository.EventBannerRepository;
 import com.ec7205.event_hub.event_service_api.repository.EventRepository;
 import com.ec7205.event_hub.event_service_api.service.EventService;
+import com.ec7205.event_hub.event_service_api.config.EventAccess;
 import com.ec7205.event_hub.event_service_api.service.FileService;
 import com.ec7205.event_hub.event_service_api.utils.CommonFileSavedBinaryDataDto;
 import com.ec7205.event_hub.event_service_api.utils.FileDataExtractor;
@@ -61,6 +62,7 @@ public class EventServiceImpl implements EventService {
     private final EventMapper eventMapper;
     private final FileService fileService;
     private final FileDataExtractor fileDataExtractor;
+    private final EventAccess eventAccess;
 
     @Value("${bucketName}")
     private String bucketName;
@@ -70,6 +72,7 @@ public class EventServiceImpl implements EventService {
 
     @Override
     public ApiMessageResponse createEvent(CreateEventRequest request, MultipartFile bannerimg) {
+        String ownerId = eventAccess.managerId();
         validateEventSchedule(request.getStartDateTime(), request.getEndDateTime());
         validateTicketTypes(request.getTicketTypes().size());
 
@@ -83,7 +86,7 @@ public class EventServiceImpl implements EventService {
                 .startDateTime(request.getStartDateTime())
                 .endDateTime(request.getEndDateTime())
                 .status(request.getStatus() == null ? EventStatus.DRAFT : request.getStatus())
-                .createdBy(request.getCreatedBy())
+                .createdBy(ownerId)
                 .build();
 
         List<TicketType> ticketTypes = eventMapper.toTicketTypeEntities(request.getTicketTypes(), event);
@@ -109,10 +112,12 @@ public class EventServiceImpl implements EventService {
 
     @Override
     public ApiMessageResponse updateEvent(Long eventId, UpdateEventRequest request, MultipartFile bannerimg) {
+        eventAccess.managerId();
+        Event event = getDetailedEventOrThrow(eventId);
+        eventAccess.checkOwner(event);
         validateEventSchedule(request.getStartDateTime(), request.getEndDateTime());
         validateTicketTypes(request.getTicketTypes().size());
 
-        Event event = getDetailedEventOrThrow(eventId);
         ensureEventCanBeModified(event);
 
         Category category = getActiveCategoryOrThrow(request.getCategoryId());
@@ -140,7 +145,9 @@ public class EventServiceImpl implements EventService {
 
     @Override
     public ApiMessageResponse changeEventStatus(Long eventId, UpdateEventStatusRequest request) {
+        eventAccess.managerId();
         Event event = getEventOrThrow(eventId);
+        eventAccess.checkOwner(event);
         validateStatusTransition(event.getStatus(), request.getStatus());
 
         event.setStatus(request.getStatus());
@@ -152,7 +159,9 @@ public class EventServiceImpl implements EventService {
 
     @Override
     public ApiMessageResponse deleteEvent(Long eventId) {
+        eventAccess.managerId();
         Event event = getEventOrThrow(eventId);
+        eventAccess.checkOwner(event);
 
         if (event.getStatus() == EventStatus.COMPLETED) {
             throw new ConflictException("Completed events cannot be deactivated");
@@ -196,15 +205,21 @@ public class EventServiceImpl implements EventService {
     @Override
     @Transactional(readOnly = true)
     public EventDetailResponse getAdminEventDetails(Long eventId) {
+        eventAccess.managerId();
         Event event = getDetailedEventOrThrow(eventId);
+        eventAccess.checkOwner(event);
         return eventMapper.toEventDetailResponse(event);
     }
 
     @Override
     @Transactional(readOnly = true)
     public AdminEventPaginateResponseDto getAdminEvents(String search, EventStatus status, Pageable pageable) {
+        String subject = eventAccess.managerId();
         Specification<Event> specification = Specification.where(titleContains(search))
                 .and(hasStatus(status));
+        if (!eventAccess.isAdmin()) {
+            specification = specification.and((root, query, cb) -> cb.equal(root.get("createdBy"), subject));
+        }
 
         Page<AdminEventSummaryResponse> eventPage = eventRepository.findAll(specification, pageable)
                 .map(eventMapper::toAdminEventSummaryResponse);
@@ -213,6 +228,12 @@ public class EventServiceImpl implements EventService {
                 .dataList(eventPage.getContent())
                 .dataCount(eventPage.getTotalElements())
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Long> getOwnedEventIds() {
+        return eventRepository.findIdsByCreatedBy(eventAccess.managerId());
     }
 
     private Event getEventOrThrow(Long eventId) {

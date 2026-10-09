@@ -18,6 +18,7 @@ import java.util.List;
 public class BookingInfoResponse {
 
     private Long eventId;
+    private String createdBy;
     private String title;
     private String bannerUrl;
     private EventStatus status;

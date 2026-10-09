@@ -97,10 +97,32 @@ Internal endpoints:
 
 ## Role-Based Access
 
-- `permitAll`: public event reads and internal event endpoints
-- `admin`, `host`: event write operations and category management
+- ADMIN: all event management and category management.
+- HOST: create events; update, cancel, change status and read management details
+  only for events whose `createdBy` matches the JWT subject. List filtering and
+  counts are scoped in the database before pagination.
+- CUSTOMER: public published-event/category reads; no management operations.
+- Authenticated non-owners receive 403; unauthenticated management uses the
+  existing 401 handling. Upper/lowercase realm roles use lowercase authorities.
 
-The service uses both `hasAnyAuthority` and `hasAnyRole` checks. Public GET access is also explicitly allowed in `SecurityConfig`.
+Creation always uses the JWT subject for `createdBy`; client-supplied values are
+ignored. `GET /events/admin/owned-ids` requires ADMIN/HOST and returns IDs owned
+by the caller, for Booking Service's scoped queries. The existing internal
+booking-info response includes `createdBy` for booking-detail authorization.
+No cross-service database joins or foreign keys are introduced.
+
+Deploy this version before Booking Service. Audit historical `createdBy` values:
+older versions trusted client input, so ownership may be incorrect or forged.
+No owners are guessed or reassigned automatically. The gateway rejects external
+access to Event Service's internal inventory routes and Booking Service's internal
+count route. Internal inventory APIs still trust the service network; direct
+backend ports must remain private. Notification administration is ADMIN-only at
+the gateway; Notification Service itself still depends on that network boundary.
+
+`EventOwnershipTest` verifies persisted scope/counts, forged creation ownership,
+ADMIN access, owner/non-owner HOST operations and CUSTOMER denial.
+`EventAuthorizationHttpTest` verifies JWT conversion, HTTP 401/403 and ADMIN-only
+category management. Run `mvn test` with Java 17+ (persistence tests use H2).
 
 ## Runtime Dependencies
 

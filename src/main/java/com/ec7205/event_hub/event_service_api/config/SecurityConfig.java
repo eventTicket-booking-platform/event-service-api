@@ -23,6 +23,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/event-service/api/v1/internal/**").permitAll()
+                        .requestMatchers("/event-service/api/v1/events/admin/**").hasAnyAuthority("admin", "host")
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/event-service/api/v1/events/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/event-service/api/v1/categories/**").permitAll()
                         .anyRequest().authenticated()

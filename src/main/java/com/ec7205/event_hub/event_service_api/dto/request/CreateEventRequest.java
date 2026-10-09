@@ -44,7 +44,7 @@ public class CreateEventRequest {
 
     private EventStatus status;
 
-    @NotBlank(message = "Created by user id is required")
+    // Retained for older clients; ownership always comes from the authenticated JWT.
     private String createdBy;
 
     @NotEmpty(message = "At least one ticket type is required")

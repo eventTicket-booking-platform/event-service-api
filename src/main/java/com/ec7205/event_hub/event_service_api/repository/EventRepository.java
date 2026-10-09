@@ -13,6 +13,9 @@ import org.springframework.data.jpa.repository.Lock;
 
 public interface EventRepository extends JpaRepository<Event, Long>, JpaSpecificationExecutor<Event> {
 
+    @Query("select e.event_id from Event e where e.createdBy = :ownerId")
+    java.util.List<Long> findIdsByCreatedBy(@Param("ownerId") String ownerId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select e from Event e where e.event_id = :id")
     Optional<Event> findByIdForUpdate(@Param("id") Long id);

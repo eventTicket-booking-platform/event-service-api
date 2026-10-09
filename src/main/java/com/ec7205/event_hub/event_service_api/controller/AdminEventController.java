@@ -41,6 +41,12 @@ public class AdminEventController {
     private final ObjectMapper objectMapper;
     private final Validator validator;
 
+    @GetMapping("/admin/owned-ids")
+    @PreAuthorize("hasAnyAuthority('admin','host')")
+    public ResponseEntity<java.util.List<Long>> getOwnedEventIds() {
+        return ResponseEntity.ok(eventService.getOwnedEventIds());
+    }
+
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAnyAuthority('admin','host')")
     public ResponseEntity<ApiMessageResponse> createEvent(

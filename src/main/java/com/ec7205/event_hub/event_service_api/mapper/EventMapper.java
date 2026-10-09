@@ -91,6 +91,7 @@ public class EventMapper {
 
     public BookingInfoResponse toBookingInfoResponse(Event event) {
         return BookingInfoResponse.builder()
+                .createdBy(event.getCreatedBy())
                 .eventId(event.getEvent_id())
                 .title(event.getTitle())
                 .bannerUrl(resolveBannerUrl(event))

@@ -24,13 +24,13 @@ public class CategoryController {
     private final CategoryService categoryService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('admin','host')")
+    @PreAuthorize("hasAuthority('admin')")
     public ResponseEntity<ApiMessageResponse> createCategory(@Valid @RequestBody CreateCategoryRequest request) {
         return ResponseEntity.ok(categoryService.createCategory(request));
     }
 
     @PutMapping("/{categoryId}")
-    @PreAuthorize("hasAnyRole('admin','host')")
+    @PreAuthorize("hasAuthority('admin')")
     public ResponseEntity<ApiMessageResponse> updateCategory(
             @PathVariable Long categoryId,
             @Valid @RequestBody UpdateCategoryRequest request
@@ -39,7 +39,7 @@ public class CategoryController {
     }
 
     @DeleteMapping("/{categoryId}")
-    @PreAuthorize("hasAnyRole('admin','host')")
+    @PreAuthorize("hasAuthority('admin')")
     public ResponseEntity<ApiMessageResponse> deleteCategory(@PathVariable Long categoryId) {
         return ResponseEntity.ok(categoryService.deleteCategory(categoryId));
     }

@@ -19,6 +19,11 @@ import java.util.Map;
 @RestControllerAdvice
 public class AppWideExceptionHandler {
 
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<StandardResponseDto> handleAccessDenied(org.springframework.security.access.AccessDeniedException ex) {
+        return new ResponseEntity<>(new StandardResponseDto(403, ex.getMessage(), null), HttpStatus.FORBIDDEN);
+    }
+
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<StandardResponseDto> handleResourceNotFoundException(ResourceNotFoundException ex) {
         return new ResponseEntity<>(

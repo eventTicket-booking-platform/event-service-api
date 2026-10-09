@@ -15,6 +15,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 public interface EventService {
 
+    java.util.List<Long> getOwnedEventIds();
+
     ApiMessageResponse createEvent(CreateEventRequest request, MultipartFile bannerimg);
 
     ApiMessageResponse updateEvent(Long eventId, UpdateEventRequest request, MultipartFile bannerimg);
