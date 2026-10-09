@@ -6,6 +6,7 @@ import com.ec7205.event_hub.event_service_api.entity.Event;
 import com.ec7205.event_hub.event_service_api.exception.ConflictException;
 import com.ec7205.event_hub.event_service_api.repository.EventRepository;
 import com.ec7205.event_hub.event_service_api.repository.TicketTypeRepository;
+import com.ec7205.event_hub.event_service_api.repository.TicketReleaseRepository;
 import com.ec7205.event_hub.event_service_api.service.impl.InternalEventServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,6 +29,9 @@ class InternalEventServiceImplTest {
     @Mock
     private TicketTypeRepository ticketTypeRepository;
 
+    @Mock
+    private TicketReleaseRepository ticketReleaseRepository;
+
     private InternalEventServiceImpl internalEventService;
 
     @BeforeEach
@@ -35,7 +39,8 @@ class InternalEventServiceImplTest {
         internalEventService = new InternalEventServiceImpl(
                 eventRepository,
                 ticketTypeRepository,
-                null
+                null,
+                ticketReleaseRepository
         );
     }
 

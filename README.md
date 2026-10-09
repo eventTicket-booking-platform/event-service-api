@@ -1,5 +1,35 @@
 # Event Service API
 
+## Idempotent ticket release
+
+The existing `POST /event-service/api/v1/internal/events/{eventId}/release`
+accepts an optional `releaseId` (at most 100 characters) alongside `tickets`.
+Booking Service uses its booking reference for both immediate compensation and
+scheduled expiry retries. Event Service locks the event row and stores the
+release ID, event ID and canonical ticket quantities in `ticket_releases`, in the
+same local transaction as all inventory increments. Repeating the ID with the
+same event/quantities returns success without changing inventory; reusing it
+with different event/quantities returns a conflict. A failed inventory update
+rolls back both the increments and receipt. Requests without `releaseId` retain
+their existing behavior and are not deduplicated.
+
+Deploy this support before Booking Service's reservation-expiry version. With
+`ddl-auto=update` the table is created automatically. For manually managed schemas:
+
+```sql
+CREATE TABLE ticket_releases (
+    release_id VARCHAR(100) NOT NULL PRIMARY KEY,
+    event_id BIGINT NOT NULL,
+    ticket_quantities TEXT NOT NULL
+);
+```
+
+Retain receipts while callers might retry; deleting one permits another release.
+The lock serializes releases for the same event. This is local HTTP-operation
+idempotency, not a distributed transaction with Booking Service.
+`TicketReleaseTest` checks repeat/concurrent release, changed quantities, atomic
+rollback/retry and callers without IDs using H2. Run with `mvn test` on Java 17+.
+
 Catalog and event-management service for Event Hub. This service owns categories, public event discovery, event details, admin event CRUD, and internal event data required by booking flows.
 
 ## Stack
