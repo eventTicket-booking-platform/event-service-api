@@ -1,5 +1,25 @@
 # Event Service API
 
+## Ticket inventory and edits
+
+New tiers initialize `availableQuantity = totalQuantity`, including zero.
+Public detail and booking-info ticket responses retain `totalQuantity` and now
+also expose `availableQuantity`. Deploy this API before the updated customer UI.
+
+For `PUT /event-service/api/v1/events/{eventId}`, existing tiers must submit their
+response `ticketTypeId` as request `id`; missing/null `id` means a new tier.
+Existing IDs remain stable. Under event and ticket-row write locks, the service
+calculates committed tickets as `totalQuantity - availableQuantity` (including
+unpaid reservations). New availability is `newTotal - committed`.
+Totals below committed quantity, removal of committed tiers, duplicate IDs and
+foreign IDs return 409. Omitted tiers with no committed inventory may be removed.
+All validation and changes run in one local transaction. Clients that omit IDs
+cannot replace sold tiers; update the dashboard alongside this change.
+
+`TicketInventoryLifecycleTest` checks initialization, public inventory after a
+reservation, safe increases/decreases, stable IDs, additions/removals, invalid
+IDs and transaction rollback. Run `mvn test`; these tests use H2, not MySQL.
+
 ## Idempotent ticket release
 
 The existing `POST /event-service/api/v1/internal/events/{eventId}/release`

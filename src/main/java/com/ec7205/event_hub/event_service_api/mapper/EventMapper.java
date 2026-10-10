@@ -44,6 +44,7 @@ public class EventMapper {
                         .name(ticketTypeRequest.getName().trim())
                         .price(ticketTypeRequest.getPrice())
                         .totalQuantity(ticketTypeRequest.getTotalQuantity())
+                        .availableQuantity(ticketTypeRequest.getTotalQuantity())
                         .event(event)
                         .build())
                 .toList();
@@ -117,6 +118,7 @@ public class EventMapper {
                 .name(ticketType.getName())
                 .price(ticketType.getPrice())
                 .totalQuantity(ticketType.getTotalQuantity())
+                .availableQuantity(ticketType.getAvailableQuantity())
                 .build();
     }
 

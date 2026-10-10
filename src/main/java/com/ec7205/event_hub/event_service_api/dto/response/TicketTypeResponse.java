@@ -19,4 +19,5 @@ public class TicketTypeResponse {
     private String name;
     private BigDecimal price;
     private Integer totalQuantity;
+    private Integer availableQuantity;
 }

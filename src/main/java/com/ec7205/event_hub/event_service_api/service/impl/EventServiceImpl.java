@@ -1,6 +1,7 @@
 package com.ec7205.event_hub.event_service_api.service.impl;
 
 import com.ec7205.event_hub.event_service_api.dto.request.CreateEventRequest;
+import com.ec7205.event_hub.event_service_api.dto.request.TicketTypeRequest;
 import com.ec7205.event_hub.event_service_api.dto.request.UpdateEventRequest;
 import com.ec7205.event_hub.event_service_api.dto.request.UpdateEventStatusRequest;
 import com.ec7205.event_hub.event_service_api.dto.response.AdminEventSummaryResponse;
@@ -19,6 +20,7 @@ import com.ec7205.event_hub.event_service_api.exception.InvalidStatusTransitionE
 import com.ec7205.event_hub.event_service_api.exception.ResourceNotFoundException;
 import com.ec7205.event_hub.event_service_api.mapper.EventMapper;
 import com.ec7205.event_hub.event_service_api.repository.CategoryRepository;
+import com.ec7205.event_hub.event_service_api.repository.TicketTypeRepository;
 import com.ec7205.event_hub.event_service_api.repository.EventBannerRepository;
 import com.ec7205.event_hub.event_service_api.repository.EventRepository;
 import com.ec7205.event_hub.event_service_api.service.EventService;
@@ -43,10 +45,14 @@ import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -57,6 +63,7 @@ public class EventServiceImpl implements EventService {
             EnumSet.of(EventStatus.DRAFT, EventStatus.PUBLISHED, EventStatus.CANCELLED);
 
     private final EventRepository eventRepository;
+    private final TicketTypeRepository ticketTypeRepository;
     private final EventBannerRepository eventBannerRepository;
     private final CategoryRepository categoryRepository;
     private final EventMapper eventMapper;
@@ -113,12 +120,19 @@ public class EventServiceImpl implements EventService {
     @Override
     public ApiMessageResponse updateEvent(Long eventId, UpdateEventRequest request, MultipartFile bannerimg) {
         eventAccess.managerId();
-        Event event = getDetailedEventOrThrow(eventId);
+        Event event = eventRepository.findByIdForUpdate(eventId)
+                .orElseThrow(() -> new ResourceNotFoundException("Event not found for id: " + eventId));
         eventAccess.checkOwner(event);
         validateEventSchedule(request.getStartDateTime(), request.getEndDateTime());
         validateTicketTypes(request.getTicketTypes().size());
 
         ensureEventCanBeModified(event);
+
+        // Load inventory with a locking read, before initializing the lazy collection.
+        // This sees committed reservations and holds their rows until this edit commits.
+        Map<Long, TicketType> existing = ticketTypeRepository.findByEventIdForUpdate(eventId).stream()
+                .collect(Collectors.toMap(TicketType::getId, Function.identity()));
+        validateTicketTypeUpdates(request.getTicketTypes(), existing);
 
         Category category = getActiveCategoryOrThrow(request.getCategoryId());
 
@@ -129,13 +143,11 @@ public class EventServiceImpl implements EventService {
         event.setStartDateTime(request.getStartDateTime());
         event.setEndDateTime(request.getEndDateTime());
 
+        updateTicketTypes(event, request.getTicketTypes(), existing);
+
         if (hasBannerFile(bannerimg)) {
             replaceEventBanner(event, bannerimg);
         }
-
-        // TODO validate sold-ticket quantities before allowing ticket structure changes.
-        event.getTicketTypes().clear();
-        event.getTicketTypes().addAll(eventMapper.toTicketTypeEntities(request.getTicketTypes(), event));
 
         return ApiMessageResponse.builder()
                 .message("Event updated successfully")
@@ -260,6 +272,55 @@ public class EventServiceImpl implements EventService {
     private void validateTicketTypes(int ticketTypeCount) {
         if (ticketTypeCount < 1) {
             throw new BadRequestException("At least one ticket type is required");
+        }
+    }
+
+    private void validateTicketTypeUpdates(List<TicketTypeRequest> requested, Map<Long, TicketType> existing) {
+        Set<Long> retained = new HashSet<>();
+        for (TicketTypeRequest tier : requested) {
+            if (tier.getId() == null) continue;
+            if (!retained.add(tier.getId())) {
+                throw new ConflictException("Duplicate ticket tier ID: " + tier.getId());
+            }
+            TicketType current = existing.get(tier.getId());
+            if (current == null) {
+                throw new ConflictException("Ticket tier does not belong to this event: " + tier.getId());
+            }
+            if (tier.getTotalQuantity() < committedQuantity(current)) {
+                throw new ConflictException("Total quantity cannot be below sold/reserved quantity for ticket tier: " + tier.getId());
+            }
+        }
+        for (TicketType current : existing.values()) {
+            if (!retained.contains(current.getId()) && committedQuantity(current) > 0) {
+                throw new ConflictException("Cannot remove a ticket tier with sold/reserved tickets: " + current.getId());
+            }
+        }
+    }
+
+    private int committedQuantity(TicketType tier) {
+        if (tier.getTotalQuantity() == null || tier.getAvailableQuantity() == null
+                || tier.getAvailableQuantity() < 0 || tier.getAvailableQuantity() > tier.getTotalQuantity()) {
+            throw new ConflictException("Invalid inventory for ticket tier: " + tier.getId());
+        }
+        // Includes outstanding reservations as well as paid tickets.
+        return tier.getTotalQuantity() - tier.getAvailableQuantity();
+    }
+
+    private void updateTicketTypes(Event event, List<TicketTypeRequest> requested, Map<Long, TicketType> existing) {
+        Set<Long> retained = requested.stream().map(TicketTypeRequest::getId)
+                .filter(java.util.Objects::nonNull).collect(Collectors.toSet());
+        event.getTicketTypes().removeIf(tier -> !retained.contains(tier.getId()));
+        for (TicketTypeRequest tier : requested) {
+            if (tier.getId() == null) {
+                event.getTicketTypes().addAll(eventMapper.toTicketTypeEntities(List.of(tier), event));
+            } else {
+                TicketType current = existing.get(tier.getId());
+                int committed = committedQuantity(current);
+                current.setName(tier.getName().trim());
+                current.setPrice(tier.getPrice());
+                current.setTotalQuantity(tier.getTotalQuantity());
+                current.setAvailableQuantity(tier.getTotalQuantity() - committed);
+            }
         }
     }
 

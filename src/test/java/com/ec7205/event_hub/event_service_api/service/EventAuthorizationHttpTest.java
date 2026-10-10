@@ -28,6 +28,7 @@ class EventAuthorizationHttpTest {
     @Autowired MockMvc mvc;
     @MockBean JwtDecoder decoder;
     @MockBean EventRepository events;
+    @MockBean TicketTypeRepository tickets;
     @MockBean EventBannerRepository banners;
     @MockBean CategoryRepository categories;
     @MockBean EventMapper mapper;

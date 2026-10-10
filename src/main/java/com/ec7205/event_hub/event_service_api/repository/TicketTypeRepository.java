@@ -6,12 +6,19 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
 import java.util.List;
 
 public interface TicketTypeRepository extends JpaRepository<TicketType, Long> {
 
     @Query("select tt from TicketType tt where tt.event.id = :eventId order by tt.id asc")
     List<TicketType> findByEventIdOrderByIdAsc(@Param("eventId") Long eventId);
+
+    // Lock current inventory before calculating committed quantities during an edit.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select tt from TicketType tt where tt.event.id = :eventId order by tt.id asc")
+    List<TicketType> findByEventIdForUpdate(@Param("eventId") Long eventId);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Transactional
